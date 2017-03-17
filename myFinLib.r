@@ -6,7 +6,7 @@ OptionPrice <- function(spot, mtrty, prd, sigma, strike, r, dvd=0, call=TRUE, US
   
   pTree <- bio.tree(spot, prd, u)
   
-  OptionTree <- OptTree(pTree, strike, sigma, mtrty, r, prd, dvd, call=call, US=FALSE)
+  OptionTree <- OptTree(pTree, strike, sigma, mtrty, r, prd, dvd, call=call, US=US)
   
   result <- list(q=q, PriceTree=pTree, Payoff=OptionTree, Option.Price=OptionTree[1,1])
 }
@@ -83,7 +83,14 @@ OptTree <- function(pTree, strike, sigma, mtrty, r, prd, dvd = 0, call=TRUE, US=
     #payoff
   
 
-if (call) {payoff <- pmax(pTree - strike, 0)} else {payoff <- pmax(pmin(- pTree + strike, pTree), 0)}
+#if (call) {payoff <- pmax(pTree - strike, 0)} else {payoff <- pmax(pmin(- pTree + strike, pTree), 0)}
+if (call) 
+  {payoff <- pmax(pTree - strike, 0)} 
+else {
+    payoff <- pmax(- pTree + strike, 0)
+    payoff[payoff == strike] <- 0
+}
+  
 payoff <- discount(payoff, q, r.real, prd, mtrty, US)
 
 payoff
@@ -103,7 +110,7 @@ discount <- function(tree, q, r, prd, maturity, early=FALSE) {
     for (row in prd:1){
       if (row <= col) {
         if (early) {
-          tree[row,col] <- max(tree[row,col], (q*tree[row,col+1] + (1 - q)*tree[row+1, col+1]))/r.real[row, col]
+          tree[row,col] <- max(tree[row,col], (q*tree[row,col+1] + (1 - q)*tree[row+1, col+1])/r.real[row, col])
         }
         else {
           tree[row,col] <- (q*tree[row,col+1] + (1 - q)*tree[row+1, col+1])/r.real[row,col]
