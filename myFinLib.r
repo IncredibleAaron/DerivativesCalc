@@ -4,11 +4,27 @@ OptionPrice <- function(spot, mtrty, prd, sigma, strike, r, dvd=0, call=TRUE, US
   q <- Qcalc(r, dvd, mtrty, prd, sigma)
   u <- Ucalc(sigma, mtrty, prd)
   
-  pTree <- bio.tree(spot, prd, u)
+  if (!is.matrix(spot))
+    {pTree <- bio.tree(spot, prd, u)}
+  else
+    {pTree <- spot}
   
   OptionTree <- OptTree(pTree, strike, sigma, mtrty, r, prd, dvd, call=call, US=US)
   
   result <- list(q=q, PriceTree=pTree, Payoff=OptionTree, Option.Price=OptionTree[1,1])
+}
+
+#Future Pricing
+FuturePrice <- function(spot, maturity, prd, sigma, r, dvd=0){
+  q <- Qcalc(r, dvd, maturity, prd, sigma)
+  u <- Ucalc(sigma, maturity, prd)
+  
+  pTree <- bio.tree(spot, prd, u)
+  
+  #future don't discount by interest rate
+  price <- discount(pTree, q, r=1, maturity)
+  
+  future <- list(q=q, price.tree = price )
 }
 
 #Generate Binomial Tree lattice. Can be used for price/short rate generation. 
@@ -91,23 +107,26 @@ else {
     payoff[payoff == strike] <- 0
 }
   
-payoff <- discount(payoff, q, r.real, prd, mtrty, US)
+payoff <- discount(payoff, q, r.real, mtrty, US)
 
 payoff
 
 }  
 #discount
-discount <- function(tree, q, r, prd, maturity, early=FALSE) {
+discount <- function(tree, q, r, maturity, early=FALSE) {
   r.real <- r
   #r.real <-  exp(r*maturity/prd)
   #discounted <- matrix(0, prd+1, prd+1)
   
+  t.col <- dim(tree)[1]
+  t.row <- dim(tree)[2]
+  
   if(!is.matrix(r.real)) {
-    r.real <- matrix(r.real, prd+1, prd+1)
+    r.real <- matrix(r.real, t.row, t.col)
   }
   
-  for (col in prd:1){
-    for (row in prd:1){
+  for (col in (t.col-1):1){
+    for (row in (t.row-1):1){
       if (row <= col) {
         if (early) {
           tree[row,col] <- max(tree[row,col], (q*tree[row,col+1] + (1 - q)*tree[row+1, col+1])/r.real[row, col])
